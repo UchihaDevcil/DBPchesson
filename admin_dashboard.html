@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ĐBP's Chess Club — Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,sans-serif;background:#070b14;color:#e5e7eb;min-height:100vh;overflow-x:hidden;opacity:0;transition:opacity .5s ease}
+body.ready{opacity:1}
+.stat-glow{position:relative}
+.stat-glow::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 30% 0%,rgba(225,29,72,.12),transparent 60%);pointer-events:none}
+.bg-orb{position:fixed;border-radius:999px;filter:blur(80px);opacity:.22;pointer-events:none;z-index:0}
+.orb1{width:420px;height:420px;background:#e11d48;top:-140px;left:-100px}
+.orb2{width:520px;height:520px;background:#2563eb;right:-180px;bottom:-180px}
+.glass{background:rgba(15,23,42,.72);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(18px);box-shadow:0 20px 70px rgba(0,0,0,.28)}
+.sidebar{background:rgba(2,6,23,.88);border-right:1px solid rgba(255,255,255,.07)}
+.nav-item{transition:.25s}
+.nav-item.active,.nav-item:hover{background:linear-gradient(90deg,rgba(225,29,72,.2),rgba(37,99,235,.08));color:#fff;transform:translateX(3px)}
+.card{transition:.3s}
+.card:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.14)}
+.shine{position:relative;overflow:hidden}
+.shine:after{content:"";position:absolute;inset:-80% -30%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent);transform:rotate(18deg) translateX(-80%);transition:.7s}
+.shine:hover:after{transform:rotate(18deg) translateX(80%)}
+.fade{animation:fade .5s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.pop{animation:pop .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+.bracket-line{height:2px;background:linear-gradient(90deg,#475569,#e11d48,#475569)}
+table{border-collapse:separate;border-spacing:0}
+tbody tr{transition:.2s}
+tbody tr:hover{background:rgba(255,255,255,.035)}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}
+</style>
+</head>
+<body>
+  
+<div class="bg-orb orb1"></div><div class="bg-orb orb2"></div>
+
+<!-- ĐANG XÁC THỰC (hiện trong lúc kiểm tra phiên đăng nhập) -->
+<section id="checkingScreen" class="relative z-10 min-h-screen flex items-center justify-center p-5">
+  <div class="text-center fade">
+    <div class="w-16 h-16 mx-auto rounded-2xl bg-rose-500/15 border border-rose-400/20 flex items-center justify-center shadow-[0_0_50px_rgba(225,29,72,.22)] animate-pulse">
+      <i class="fa-solid fa-shield-halved text-2xl text-rose-400"></i>
+    </div>
+    <p class="text-slate-500 text-sm mt-4 tracking-widest uppercase">Đang kiểm tra phiên quản trị...</p>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="hidden relative z-10 min-h-screen">
+  <div class="flex min-h-screen">
+    <aside class="sidebar w-72 fixed inset-y-0 left-0 hidden lg:flex flex-col p-5">
+      <div class="flex items-center gap-3 px-2 py-3">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-600 to-red-500 flex items-center justify-center shadow-lg shadow-rose-900/30"><i class="fa-solid fa-chess-knight text-xl"></i></div>
+        <div><div class="font-black">ĐBP'S CHESS</div><div class="text-[10px] text-rose-400 tracking-[.2em]">ADMIN CENTER</div></div>
+      </div>
+      <div class="mt-8 space-y-2">
+        <button data-page="overview" class="nav-item active w-full text-left px-4 py-3 rounded-xl flex items-center gap-3"><i class="fa-solid fa-chart-pie w-5"></i>Tổng quan</button>
+        <button data-page="users" class="nav-item w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-slate-400"><i class="fa-solid fa-users w-5"></i>Người dùng</button>
+        <button data-page="tournament" class="nav-item w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-slate-400"><i class="fa-solid fa-trophy w-5"></i>Giải đấu</button>
+        <button data-page="bracket" class="nav-item w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-slate-400"><i class="fa-solid fa-shuffle w-5"></i>Ghép cặp</button>
+      </div>
+      <div class="mt-auto">
+        <div class="glass rounded-2xl p-4 mb-3">
+          <div class="text-xs text-slate-500">TRẠNG THÁI</div>
+          <div class="flex items-center gap-2 mt-2"><span class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></span><span class="text-sm">Hệ thống đang hoạt động</span></div>
+        </div>
+        <button id="logoutBtn" class="w-full px-4 py-3 rounded-xl border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition"><i class="fa-solid fa-right-from-bracket mr-2"></i>Đăng xuất</button>
+      </div>
+    </aside>
+
+    <main class="lg:ml-72 flex-1 p-4 sm:p-6 lg:p-8">
+      <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 fade">
+        <div><div class="text-xs uppercase tracking-[.25em] text-rose-400 font-bold">Control Center</div><h2 id="pageTitle" class="text-3xl sm:text-4xl font-black mt-1">Tổng quan</h2></div>
+        <div class="flex gap-2">
+          <button id="refreshBtn" class="px-4 py-2.5 rounded-xl glass hover:bg-white/10 transition"><i class="fa-solid fa-rotate mr-2"></i>Làm mới</button>
+          <button id="mobileLogout" class="lg:hidden px-4 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-600"><i class="fa-solid fa-power-off"></i></button>
+        </div>
+      </header>
+
+      <!-- OVERVIEW -->
+      <div id="page-overview" class="page fade">
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div class="card stat-glow glass rounded-2xl p-5"><div class="text-slate-500 text-sm">Tổng người dùng</div><div id="statUsers" class="text-3xl font-black mt-2">0</div><div class="text-xs text-slate-500 mt-2"><i class="fa-solid fa-users mr-1"></i> Hồ sơ đã lưu</div></div>
+          <div class="card stat-glow glass rounded-2xl p-5"><div class="text-slate-500 text-sm">Đã đăng ký giải</div><div id="statRegistered" class="text-3xl font-black mt-2 text-amber-400">0</div><div id="statRate" class="text-xs text-slate-500 mt-2">0% tổng người dùng</div></div>
+          <div class="card stat-glow glass rounded-2xl p-5"><div class="text-slate-500 text-sm">Chưa đăng ký</div><div id="statUnregistered" class="text-3xl font-black mt-2 text-sky-400">0</div><div class="text-xs text-slate-500 mt-2">Có thể tham gia</div></div>
+          <div class="card stat-glow glass rounded-2xl p-5"><div class="text-slate-500 text-sm">Số trận vòng 1</div><div id="statMatches" class="text-3xl font-black mt-2 text-rose-400">0</div><div class="text-xs text-slate-500 mt-2">Theo danh sách hiện tại</div></div>
+        </div>
+
+        <div class="grid xl:grid-cols-3 gap-5 mt-5">
+          <div class="xl:col-span-2 glass rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-5"><div><h3 class="font-bold text-xl">Hoạt động giải đấu</h3><p class="text-sm text-slate-500">Tổng hợp nhanh từ dữ liệu trình duyệt</p></div><i class="fa-solid fa-chart-line text-rose-400 text-2xl"></i></div>
+            <div class="h-5 bg-slate-800 rounded-full overflow-hidden"><div id="progressBar" class="h-full bg-gradient-to-r from-rose-700 to-amber-400 transition-all duration-700" style="width:0%"></div></div>
+            <div class="flex justify-between mt-2 text-xs text-slate-500"><span>Đăng ký giải</span><span id="progressText">0%</span></div>
+          </div>
+          <div class="glass rounded-2xl p-6">
+            <h3 class="font-bold text-xl">Thao tác nhanh</h3>
+            <div class="grid gap-3 mt-5">
+              <button onclick="showPage('users')" class="shine rounded-xl bg-slate-800 hover:bg-slate-700 p-3 text-left"><i class="fa-solid fa-table mr-2 text-sky-400"></i>Xem toàn bộ người dùng</button>
+              <button onclick="showPage('tournament')" class="shine rounded-xl bg-slate-800 hover:bg-slate-700 p-3 text-left"><i class="fa-solid fa-trophy mr-2 text-amber-400"></i>Quản lý giải đấu</button>
+              <button onclick="showPage('bracket')" class="shine rounded-xl bg-slate-800 hover:bg-slate-700 p-3 text-left"><i class="fa-solid fa-shuffle mr-2 text-rose-400"></i>Ngẫu nhiên ghép cặp</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div id="page-users" class="page hidden fade">
+        <div class="glass rounded-2xl overflow-hidden">
+          <div class="p-5 border-b border-white/5 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+            <div><h3 class="text-xl font-bold">Lưu trữ người dùng</h3><p class="text-sm text-slate-500">Toàn bộ hồ sơ mà trình duyệt này đang lưu.</p></div>
+            <div class="flex gap-2"><input id="searchInput" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 outline-none focus:border-rose-500" placeholder="Tìm tên, lớp, trường..."><button onclick="exportUsers()" class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 font-bold"><i class="fa-solid fa-download mr-2"></i>Xuất</button></div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[850px]">
+              <thead class="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-500"><tr><th class="text-left px-5 py-4">#</th><th class="text-left px-5 py-4">Họ tên</th><th class="text-left px-5 py-4">SĐT</th><th class="text-left px-5 py-4">Lớp</th><th class="text-left px-5 py-4">Trường</th><th class="text-left px-5 py-4">Giải đấu</th><th class="text-right px-5 py-4">Xóa</th></tr></thead>
+              <tbody id="usersTable"></tbody>
+            </table>
+          </div>
+          <div id="emptyUsers" class="hidden p-12 text-center text-slate-500"><i class="fa-solid fa-box-open text-4xl mb-3"></i><div>Chưa có dữ liệu người dùng.</div></div>
+        </div>
+      </div>
+
+      <!-- TOURNAMENT -->
+      <div id="page-tournament" class="page hidden fade">
+        <div class="grid lg:grid-cols-3 gap-5">
+          <div class="glass rounded-2xl p-6 lg:col-span-1">
+            <i class="fa-solid fa-trophy text-4xl text-amber-400"></i>
+            <h3 class="text-2xl font-black mt-4">Điện Biên Chess</h3>
+            <p class="text-slate-500 mt-2">Quản lý danh sách kỳ thủ đã ghi danh và chuẩn bị vòng đấu.</p>
+            <div class="mt-6 p-4 rounded-xl bg-slate-900/80 border border-slate-800"><div class="text-xs text-slate-500">NGƯỜI THAM GIA</div><div id="tourCount" class="text-3xl font-black text-amber-400 mt-1">0</div></div>
+            <button onclick="generateBracket()" class="shine w-full mt-4 py-3.5 rounded-xl bg-gradient-to-r from-rose-700 to-red-600 font-extrabold shadow-lg shadow-rose-900/20"><i class="fa-solid fa-shuffle mr-2"></i>TẠO GHÉP CẶP NGẪU NHIÊN</button>
+          </div>
+          <div class="glass rounded-2xl p-6 lg:col-span-2">
+            <div class="flex justify-between items-center"><div><h3 class="text-xl font-bold">Danh sách tham gia</h3><p class="text-sm text-slate-500">Chỉ các hồ sơ có trạng thái đăng ký giải.</p></div><span id="registeredBadge" class="px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 text-xs font-bold">0 người</span></div>
+            <div id="registeredList" class="mt-5 grid sm:grid-cols-2 gap-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BRACKET -->
+      <div id="page-bracket" class="page hidden fade">
+        <div class="glass rounded-2xl p-6">
+          <div class="flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
+            <div><h3 class="text-2xl font-black">Tổ chức & ghép cặp</h3><p class="text-slate-500 text-sm mt-1">Xáo trộn ngẫu nhiên người đã đăng ký rồi ghép thành từng trận.</p></div>
+            <button onclick="generateBracket(true)" class="shine px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-rose-600 font-extrabold"><i class="fa-solid fa-dice mr-2"></i>XÁO TRỘN & GHÉP LẠI</button>
+          </div>
+          <div id="bracketArea" class="mt-8"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<div id="toast" class="fixed z-[100] right-5 bottom-5 hidden max-w-sm rounded-2xl glass px-5 py-4 shadow-2xl pop"></div>
+
+<script>
+// users và bracket giờ được đồng bộ REAL-TIME từ Firestore qua onSnapshot bên dưới,
+// không còn đọc/ghi localStorage nữa.
+let users = [];
+let bracket = null;
+let unsubscribeUsers = null;
+let unsubscribeBracket = null;
+
+// Lắng nghe real-time toàn bộ collection "users" trên Firestore.
+// Mỗi khi có thêm/sửa/xóa hồ sơ (kể cả từ trang đăng ký của người dùng khác),
+// bảng quản lý ở đây sẽ tự cập nhật ngay lập tức.
+function startUsersListener(){
+  if (unsubscribeUsers) return; // đã lắng nghe rồi thì không đăng ký lại
+  unsubscribeUsers = db.collection('users').onSnapshot((snapshot) => {
+    users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderAll();
+  }, (error) => {
+    console.error('Lỗi khi lắng nghe collection users:', error);
+    toast('Không thể tải dữ liệu người dùng từ máy chủ.', 'err');
+  });
+}
+
+// Lắng nghe real-time bảng ghép cặp (tournament/bracket) trên Firestore.
+function startBracketListener(){
+  if (unsubscribeBracket) return;
+  unsubscribeBracket = db.collection('tournament').doc('bracket').onSnapshot((doc) => {
+    bracket = doc.exists ? doc.data() : null;
+    renderBracket();
+  }, (error) => {
+    console.error('Lỗi khi lắng nghe bracket:', error);
+  });
+}
+
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.innerHTML=`<div class="flex items-center gap-3"><i class="fa-solid ${type==='ok'?'fa-circle-check':'fa-triangle-exclamation'} ${type==='ok'?'text-emerald-400':'text-rose-400'}"></i><span>${msg}</span></div>`;
+  el.classList.remove('hidden'); clearTimeout(window.__toast); window.__toast=setTimeout(()=>el.classList.add('hidden'),2800);
+}
+
+function showPage(page){
+  document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
+  const target=document.getElementById('page-'+page);
+  target.classList.remove('hidden');
+  // Kích hoạt lại hiệu ứng chuyển trang mỗi lần điều hướng
+  target.classList.remove('fade');
+  void target.offsetWidth; // reflow để restart animation
+  target.classList.add('fade');
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  const btn=document.querySelector(`[data-page="${page}"]`); if(btn) btn.classList.add('active');
+  const titles={overview:'Tổng quan',users:'Người dùng',tournament:'Giải đấu',bracket:'Ghép cặp'};
+  document.getElementById('pageTitle').textContent=titles[page];
+  renderAll();
+}
+
+// Hiệu ứng đếm số chạy dần cho các thẻ thống kê
+function animateCount(el, target){
+  const start=parseInt(el.textContent.replace(/\D/g,''))||0;
+  if(start===target){ el.textContent=target; return; }
+  const duration=600, startTime=performance.now();
+  function tick(now){
+    const p=Math.min((now-startTime)/duration,1);
+    const eased=1-Math.pow(1-p,3);
+    el.textContent=Math.round(start+(target-start)*eased);
+    if(p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function renderAll(){
+  const reg=users.filter(u=>u.isRegisteredForTournament);
+  const total=users.length, registered=reg.length, unregistered=Math.max(0,total-registered);
+  animateCount(document.getElementById('statUsers'),total);
+  animateCount(document.getElementById('statRegistered'),registered);
+  animateCount(document.getElementById('statUnregistered'),unregistered);
+  document.getElementById('statRate').textContent=(total?Math.round(registered/total*100):0)+'% tổng người dùng';
+  animateCount(document.getElementById('statMatches'),Math.ceil(registered/2));
+  document.getElementById('progressBar').style.width=(total?registered/total*100:0)+'%';
+  document.getElementById('progressText').textContent=(total?Math.round(registered/total*100):0)+'%';
+  document.getElementById('tourCount').textContent=registered;
+  document.getElementById('registeredBadge').textContent=registered+' người';
+
+  const q=(document.getElementById('searchInput')?.value||'').toLowerCase().trim();
+  const filtered=users.filter(u=>[u.fullName,u.phone,u.className,u.school].join(' ').toLowerCase().includes(q));
+  const tbody=document.getElementById('usersTable');
+  tbody.innerHTML=filtered.map((u,i)=>`
+    <tr class="border-t border-white/5">
+      <td class="px-5 py-4 text-slate-500">${i+1}</td>
+      <td class="px-5 py-4 font-bold">${esc(u.fullName)}</td>
+      <td class="px-5 py-4 text-slate-400">${esc(u.phone||'—')}</td>
+      <td class="px-5 py-4">${esc(u.className||'—')}</td>
+      <td class="px-5 py-4 text-slate-400">${esc(u.school||'—')}</td>
+      <td class="px-5 py-4">${u.isRegisteredForTournament?'<span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-bold"><i class="fa-solid fa-check mr-1"></i>Đã đăng ký</span>':'<span class="text-xs text-slate-600">Chưa đăng ký</span>'}</td>
+      <td class="px-5 py-4 text-right"><button onclick="deleteUser('${encodeURIComponent(u.id)}')" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
+    </tr>`).join('');
+  document.getElementById('emptyUsers').classList.toggle('hidden',filtered.length!==0);
+
+  document.getElementById('registeredList').innerHTML=reg.map((u,i)=>`
+    <div class="rounded-xl bg-slate-900/70 border border-slate-800 p-4 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black">${i+1}</div>
+      <div><div class="font-bold">${esc(u.fullName)}</div><div class="text-xs text-slate-500">${esc(u.className||'')} · ${esc(u.school||'')}</div></div>
+    </div>`).join('') || '<div class="sm:col-span-2 text-center py-10 text-slate-600">Chưa có người đăng ký.</div>';
+
+  renderBracket();
+}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+
+async function deleteUser(key){
+  const phone=decodeURIComponent(key);
+  if(!confirm('Xóa hồ sơ này khỏi Firestore? Hành động này không thể hoàn tác.')) return;
+  try{
+    await db.collection('users').doc(phone).delete();
+    // Không cần gọi renderAll() thủ công — onSnapshot ở trên sẽ tự cập nhật danh sách.
+    toast('Đã xóa hồ sơ.');
+  }catch(error){
+    console.error('Lỗi khi xóa hồ sơ:', error);
+    toast('Không thể xóa hồ sơ. Vui lòng thử lại.','err');
+  }
+}
+
+async function generateBracket(force=false){
+  const reg=users.filter(u=>u.isRegisteredForTournament);
+  if(reg.length<2){toast('Cần ít nhất 2 người đăng ký để ghép cặp.','err');return;}
+  if(!force && bracket){renderBracket();showPage('bracket');return;}
+  const shuffled=[...reg].sort(()=>Math.random()-.5);
+  const rounds=[];
+  for(let i=0;i<shuffled.length;i+=2) rounds.push({a:shuffled[i],b:shuffled[i+1]||null});
+  const newBracket={createdAt:new Date().toISOString(),matches:rounds};
+  try{
+    // LƯU BẢNG ĐẤU LÊN FIRESTORE — onSnapshot ở trên sẽ tự nhận và vẽ lại giao diện.
+    await db.collection('tournament').doc('bracket').set(newBracket);
+    showPage('bracket'); toast('Đã xáo trộn và tạo cặp đấu mới!');
+  }catch(error){
+    console.error('Lỗi khi lưu bracket:', error);
+    toast('Không thể lưu bảng đấu lên máy chủ.','err');
+  }
+}
+function renderBracket(){
+  const area=document.getElementById('bracketArea'); if(!area)return;
+  if(!bracket?.matches?.length){area.innerHTML='<div class="text-center py-16 text-slate-600"><i class="fa-solid fa-shuffle text-5xl mb-4"></i><div>Chưa có bảng ghép cặp.</div><button onclick="generateBracket()" class="mt-4 px-5 py-2.5 rounded-xl bg-rose-700 text-white font-bold">Tạo cặp ngay</button></div>';return;}
+  area.innerHTML=`
+    <div class="mb-5 flex flex-wrap gap-3 text-sm text-slate-500">
+      <span class="px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800"><i class="fa-solid fa-clock mr-1"></i>${new Date(bracket.createdAt).toLocaleString('vi-VN')}</span>
+      <span class="px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/10">${bracket.matches.length} trận</span>
+    </div>
+    <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
+      ${bracket.matches.map((m,i)=>`
+        <div class="glass rounded-2xl p-5 pop">
+          <div class="flex justify-between text-xs text-slate-500 uppercase tracking-widest"><span>Trận ${i+1}</span><span>Vòng 1</span></div>
+          <div class="bracket-line my-4"></div>
+          <div class="rounded-xl bg-slate-900/80 p-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-300 flex items-center justify-center font-bold">A</span>
+            <span class="font-bold">${esc(m.a?.fullName||'BYE')}</span>
+          </div>
+          <div class="text-center text-xs text-slate-600 my-2">VS</div>
+          <div class="rounded-xl bg-slate-900/80 p-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-300 flex items-center justify-center font-bold">B</span>
+            <span class="font-bold">${esc(m.b?.fullName||'BYE — Tự động vào vòng sau')}</span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function exportUsers(){
+  const blob=new Blob([JSON.stringify(users,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dbp-chess-users.json'; a.click(); URL.revokeObjectURL(a.href);
+  toast('Đã xuất dữ liệu người dùng.');
+}
+
+function openDashboard(){
+  startUsersListener();
+  startBracketListener();
+  document.getElementById('checkingScreen').classList.add('hidden');
+  const dash=document.getElementById('dashboard');
+  dash.classList.remove('hidden');
+  dash.classList.add('fade');
+  renderAll();
+}
+function logout(){
+  // Hủy các listener real-time trước khi đăng xuất
+  if(unsubscribeUsers) unsubscribeUsers();
+  if(unsubscribeBracket) unsubscribeBracket();
+  auth.signOut().finally(()=>{
+    document.body.style.transition='opacity 0.4s ease';
+    document.body.style.opacity='0';
+    setTimeout(()=>{ window.location.href='admin.html'; },400);
+  });
+}
+document.getElementById('logoutBtn').onclick=logout;
+document.getElementById('mobileLogout').onclick=logout;
+document.getElementById('refreshBtn').onclick=()=>{renderAll();toast('Đã làm mới dữ liệu.');};
+document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+document.getElementById('searchInput').addEventListener('input',renderAll);
+
+// Bảng điều khiển này chỉ mở khi Firebase Authentication xác nhận có phiên Admin hợp lệ.
+auth.onAuthStateChanged((user)=>{
+  if(user){
+    document.body.classList.add('ready');
+    setTimeout(openDashboard,350); // độ trễ nhỏ tạo cảm giác chuyển tiếp mượt
+  }else{
+    window.location.href='admin.html';
+  }
+});
+</script>
+</body>
+</html>

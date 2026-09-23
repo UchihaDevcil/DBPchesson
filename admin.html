@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ĐBP's Chess Club - Quản Trị Viên</title>
+    
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tải FontAwesome cho các icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tải Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            /* Nền gradient tối: Đen kết hợp Đỏ quyền lực */
+            background: linear-gradient(135deg, #0f172a 0%, #4c0519 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Tùy chỉnh thanh cuộn cho Dark Theme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* --- BACKGROUND ANIMATIONS (Quân cờ trôi nổi) --- */
+        .floating-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .chess-piece {
+            position: absolute;
+            bottom: -20%;
+            color: rgba(255, 255, 255, 0.03);
+            animation: floatUp linear infinite;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+        }
+
+        .piece-1 { left: 10%; font-size: 8rem; animation-duration: 25s; animation-delay: 0s; }
+        .piece-2 { left: 30%; font-size: 5rem; animation-duration: 20s; animation-delay: 5s; }
+        .piece-3 { left: 70%; font-size: 10rem; animation-duration: 28s; animation-delay: 2s; }
+        .piece-4 { left: 85%; font-size: 6rem; animation-duration: 22s; animation-delay: 8s; }
+        .piece-5 { left: 50%; font-size: 7rem; animation-duration: 30s; animation-delay: 12s; }
+        .piece-6 { left: 20%; font-size: 9rem; animation-duration: 26s; animation-delay: 15s; }
+
+        /* --- ENTRANCE ANIMATIONS --- */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
+
+        /* --- DARK GLASSMORPHISM & INPUTS --- */
+        .glass-card-dark {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-input-dark {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-input-dark:focus {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: rgba(225, 29, 72, 0.5);
+            transform: scale(1.02);
+            box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.15);
+        }
+
+        .glass-input-dark::placeholder {
+            color: #94a3b8;
+        }
+
+        /* --- BUTTON SHINE EFFECT --- */
+        .btn-shine-red {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .btn-shine-red::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -60%; width: 20%; height: 200%;
+            background: rgba(255, 255, 255, 0.25);
+            transform: skewX(-20deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .btn-shine-red:hover::after {
+            left: 120%;
+            opacity: 1;
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        /* --- AMBIENT ORBS --- */
+        .bg-orb {
+            position: fixed;
+            border-radius: 999px;
+            filter: blur(90px);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+            animation: orbDrift 12s ease-in-out infinite alternate;
+        }
+        .orb-a { width: 420px; height: 420px; background: #e11d48; top: -140px; left: -120px; }
+        .orb-b { width: 480px; height: 480px; background: #1d4ed8; right: -160px; bottom: -160px; animation-delay: 2s; }
+        @keyframes orbDrift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(20px, -20px) scale(1.08); }
+        }
+
+        /* --- CARD TILT + GLOW BORDER --- */
+        .tilt-card {
+            transform-style: preserve-3d;
+            transition: transform 0.15s ease-out, box-shadow 0.3s ease;
+            will-change: transform;
+        }
+        .glow-ring {
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            padding: 1px;
+            background: conic-gradient(from var(--a, 0deg), transparent 0%, rgba(225,29,72,0.6) 15%, transparent 30%);
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: spinRing 4s linear infinite;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        @keyframes spinRing { to { --a: 360deg; } }
+        @property --a {
+            syntax: '<angle>';
+            inherits: false;
+            initial-value: 0deg;
+        }
+
+        /* --- PASSWORD TOGGLE --- */
+        .pass-toggle {
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .pass-toggle:hover { color: #fb7185; transform: scale(1.1); }
+
+        /* --- SUCCESS CHECK POP --- */
+        .check-pop { animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes checkPop {
+            0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+            60% { transform: scale(1.25) rotate(0deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* --- RIPPLE --- */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.5);
+            transform: scale(0);
+            animation: rippleAnim 0.6s ease-out;
+            pointer-events: none;
+        }
+        @keyframes rippleAnim {
+            to { transform: scale(3); opacity: 0; }
+        }
+
+        /* --- SHAKE ON ERROR --- */
+        .shake { animation: shakeAnim 0.5s ease; }
+        @keyframes shakeAnim {
+            10%, 90% { transform: translateX(-2px); }
+            20%, 80% { transform: translateX(4px); }
+            30%, 50%, 70% { transform: translateX(-8px); }
+            40%, 60% { transform: translateX(8px); }
+        }
+    </style>
+</head>
+<body class="text-slate-200 antialiased selection:bg-rose-600 selection:text-white">
+
+    <!-- Quầng sáng nền -->
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+
+    <!-- Quân cờ trôi nổi nền -->
+    <div class="floating-bg">
+        <i class="fa-solid fa-chess-knight chess-piece piece-1"></i>
+        <i class="fa-solid fa-chess-pawn chess-piece piece-2"></i>
+        <i class="fa-solid fa-chess-king chess-piece piece-3"></i>
+        <i class="fa-solid fa-chess-rook chess-piece piece-4"></i>
+        <i class="fa-solid fa-chess-queen chess-piece piece-5"></i>
+        <i class="fa-solid fa-chess-bishop chess-piece piece-6"></i>
+    </div>
+
+    <!-- Thanh Navigation -->
+    <nav class="bg-slate-900/80 backdrop-blur-md text-white shadow-xl sticky top-0 z-50 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer group fade-in-up">
+                    <i class="fa-solid fa-chess-knight text-2xl group-hover:-translate-y-1 transition-transform duration-300 text-rose-500"></i>
+                    <span class="font-bold text-xl tracking-wide uppercase bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">ĐBP's Chess Club</span>
+                </div>
+                
+                <!-- Menu Desktop -->
+                <div class="hidden md:flex space-x-8 fade-in-up delay-100 items-center">
+                    <a href="#" class="text-slate-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-slate-800">
+                        <i class="fa-solid fa-house-chimney"></i> Trang chủ
+                    </a>
+                    <a href="AndroidManifest.html" class="text-slate-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-slate-800">
+                        <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+                    </a>
+                    <a href="admin.html" class="bg-gradient-to-r from-rose-700 to-red-600 text-white px-4 py-2 rounded-md text-sm font-bold shadow-lg shadow-rose-900/50 hover:shadow-rose-700/60 hover:scale-105 transition-all duration-300 flex items-center gap-2 border border-rose-500/30">
+                        <i class="fa-solid fa-user-shield"></i> Quản trị viên
+                    </a>
+                </div>
+
+                <!-- Menu Mobile (Nút bấm) -->
+                <div class="md:hidden flex items-center fade-in-up delay-100">
+                    <button id="mobile-menu-btn" class="text-slate-300 hover:text-white focus:outline-none p-2 rounded-md hover:bg-slate-800 transition-colors">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Mobile (Nội dung) -->
+        <div id="mobile-menu" class="hidden md:hidden bg-slate-950 pb-4 pt-2 px-4 space-y-2 shadow-inner border-t border-slate-800">
+            <a href="#" class="block text-slate-400 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md text-base font-medium transition-colors"><i class="fa-solid fa-house-chimney w-6"></i> Trang chủ</a>
+            <a href="#" class="block text-slate-400 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md text-base font-medium transition-colors"><i class="fa-solid fa-right-to-bracket w-6"></i> Đăng nhập</a>
+            <a href="#" class="block bg-gradient-to-r from-rose-700 to-red-600 text-white px-3 py-2 rounded-md text-base font-bold shadow-md"><i class="fa-solid fa-user-shield w-6"></i> Quản trị viên</a>
+        </div>
+    </nav>
+
+    <!-- Khung đăng nhập -->
+    <main class="flex-grow flex items-center justify-center p-4 relative z-10">
+        <div id="loginCard" class="relative w-full max-w-md glass-card-dark rounded-2xl overflow-hidden fade-in-up delay-200 tilt-card">
+            <div class="glow-ring"></div>
+            
+            <div class="bg-black/40 p-8 text-center text-white relative overflow-hidden border-b border-white/5">
+                <i class="fa-solid fa-crown text-[120px] absolute -right-4 -bottom-8 text-rose-500 opacity-[0.08] rotate-12"></i>
+                <div class="relative z-10 fade-in-up delay-300">
+                    <div class="inline-block p-3 bg-rose-500/20 rounded-full mb-3 border border-rose-500/30">
+                        <i class="fa-solid fa-user-tie text-2xl text-rose-400"></i>
+                    </div>
+                    <h2 class="text-2xl font-extrabold tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 mb-1">ĐBP's chess club</h2>
+                    <p class="text-rose-400/80 text-sm font-medium tracking-wide">Xác thực hệ thống quản trị</p>
+                </div>
+            </div>
+
+            <!-- Nội dung Form -->
+            <div class="p-8">
+                <form id="adminLoginForm" class="space-y-6">
+                    
+                    <div class="fade-in-up delay-300">
+                        <label for="adminUser" class="block text-sm font-semibold text-slate-300 mb-1.5 ml-1 tracking-wide">Email quản trị</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-rose-400 text-slate-500">
+                                <i class="fa-solid fa-id-badge"></i>
+                            </div>
+                            <input type="email" id="adminUser" name="adminUser" required placeholder="admin@dbpchess.com" 
+                                class="glass-input-dark pl-11 w-full rounded-xl px-4 py-3 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- TRƯỜNG MẬT KHẨU -->
+                    <div class="fade-in-up delay-400">
+                        <label for="adminPass" class="block text-sm font-semibold text-slate-300 mb-1.5 ml-1 tracking-wide">Mật khẩu</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-rose-400 text-slate-500">
+                                <i class="fa-solid fa-key"></i>
+                            </div>
+                            <input type="password" id="adminPass" name="adminPass" required placeholder="********" 
+                                class="glass-input-dark pl-11 pr-11 w-full rounded-xl px-4 py-3 outline-none tracking-[0.2em] font-medium">
+                            <button type="button" id="togglePass" class="pass-toggle absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500" tabindex="-1">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="messageBox" class="hidden p-4 rounded-xl text-sm font-medium text-center transition-all duration-300 shadow-lg border">
+                        <!-- Nội dung thông báo hiển thị tại đây -->
+                    </div>
+
+                    <div class="pt-4 fade-in-up delay-500">
+                        <button type="submit" class="btn-shine-red w-full bg-gradient-to-r from-rose-800 to-red-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-rose-900/30 hover:shadow-rose-900/50 hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-rose-900/50 transition-all duration-300 flex justify-center items-center gap-2 group border border-rose-500/20">
+                            <i class="fa-solid fa-shield-halved group-hover:scale-110 transition-transform duration-300"></i>
+                            <span class="tracking-widest uppercase text-sm">Xác thực Quản trị</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- CHỮ KÝ "by Bach" -->
+                <div class="mt-8 text-center fade-in-up delay-500">
+                    <p class="text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase flex items-center justify-center gap-2 opacity-70 hover:opacity-100 transition-opacity duration-300">
+                        <span class="w-8 h-[1px] bg-slate-700"></span>
+                        by <span class="text-rose-400 font-bold drop-shadow-[0_0_8px_rgba(251,113,133,0.5)]">Bach</span>
+                        <span class="w-8 h-[1px] bg-slate-700"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // JS menu Mobile
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            if (mobileMenu.classList.contains('hidden')) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenu.style.animation = "fadeInUp 0.3s ease-out forwards";
+            } else {
+                mobileMenu.classList.add('hidden');
+            }
+        });
+
+        // Toggle hiện/ẩn mật khẩu
+        const togglePass = document.getElementById('togglePass');
+        const passInput = document.getElementById('adminPass');
+        togglePass.addEventListener('click', () => {
+            const isPass = passInput.type === 'password';
+            passInput.type = isPass ? 'text' : 'password';
+            togglePass.innerHTML = isPass ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+        });
+
+        // Hiệu ứng nghiêng nhẹ (tilt) theo con trỏ chuột cho thẻ đăng nhập
+        const loginCard = document.getElementById('loginCard');
+        loginCard.addEventListener('mousemove', (e) => {
+            const rect = loginCard.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const rotateX = ((y / rect.height) - 0.5) * -6;
+            const rotateY = ((x / rect.width) - 0.5) * 6;
+            loginCard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-2px)`;
+        });
+        loginCard.addEventListener('mouseleave', () => {
+            loginCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0)';
+        });
+
+        // Xử lý Form Submit đăng nhập Quản trị viên
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const messageBox = document.getElementById('messageBox');
+        const submitButton = adminLoginForm.querySelector('button[type="submit"]');
+
+        // Hiệu ứng gợn sóng (ripple) khi bấm nút
+        submitButton.addEventListener('click', function(e) {
+            const rect = submitButton.getBoundingClientRect();
+            const circle = document.createElement('span');
+            const size = Math.max(rect.width, rect.height);
+            circle.style.width = circle.style.height = size + 'px';
+            circle.style.left = (e.clientX - rect.left - size / 2) + 'px';
+            circle.style.top = (e.clientY - rect.top - size / 2) + 'px';
+            circle.classList.add('ripple');
+            submitButton.appendChild(circle);
+            setTimeout(() => circle.remove(), 600);
+        });
+
+        adminLoginForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            // Lấy giá trị Email và Mật khẩu
+            const emailValue = document.getElementById('adminUser').value.trim();
+            const passValue = document.getElementById('adminPass').value;
+
+            // Đổi trạng thái nút bấm (loading)
+            const originalBtnText = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang xác thực...';
+            submitButton.disabled = true;
+            submitButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+            try {
+                // XÁC THỰC BẰNG FIREBASE AUTHENTICATION (Email/Password)
+                await auth.signInWithEmailAndPassword(emailValue, passValue);
+
+                // Thành công
+                messageBox.className = 'p-4 rounded-xl text-sm font-medium text-center transition-all duration-300 shadow-lg border bg-emerald-900/50 backdrop-blur-md text-emerald-200 border-emerald-500/30';
+                messageBox.innerHTML = `
+                    <div class="flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-check text-emerald-400 text-lg check-pop"></i>
+                        <span>Xác thực thành công! Đang chuyển hướng...</span>
+                    </div>
+                `;
+                messageBox.classList.remove('hidden');
+                messageBox.style.animation = "fadeInUp 0.4s ease-out forwards";
+
+                submitButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang mở bảng điều khiển...';
+
+                // Hiệu ứng mờ dần toàn trang trước khi chuyển hướng
+                // (Phiên đăng nhập giờ do Firebase Auth tự quản lý, không cần sessionStorage nữa)
+                setTimeout(() => {
+                    document.body.style.transition = 'opacity 0.5s ease';
+                    document.body.style.opacity = '0';
+                    setTimeout(() => {
+                        window.location.href = 'admin_dashboard.html';
+                    }, 500);
+                }, 900);
+
+                return; // không khôi phục nút bấm vì đang chuyển trang
+            } catch (error) {
+                // Thất bại
+                console.error('Lỗi đăng nhập Firebase Auth:', error);
+                messageBox.className = 'p-4 rounded-xl text-sm font-medium text-center transition-all duration-300 shadow-lg border bg-red-900/50 backdrop-blur-md text-red-200 border-red-500/30';
+                messageBox.innerHTML = `
+                    <div class="flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-red-400 text-lg"></i>
+                        <span>Email hoặc mật khẩu không chính xác.</span>
+                    </div>
+                `;
+                messageBox.classList.remove('hidden');
+                messageBox.style.animation = "fadeInUp 0.4s ease-out forwards";
+                loginCard.classList.add('shake');
+                setTimeout(() => loginCard.classList.remove('shake'), 500);
+            }
+
+            // Khôi phục nút bấm
+            submitButton.innerHTML = originalBtnText;
+            submitButton.disabled = false;
+            submitButton.classList.remove('opacity-70', 'cursor-not-allowed');
+
+            // Ẩn thông báo sau 4 giây
+            setTimeout(() => {
+                messageBox.style.animation = "fadeInUp 0.4s ease-out reverse forwards";
+                setTimeout(() => messageBox.classList.add('hidden'), 400);
+            }, 4000);
+        });
+
+        // Nếu đã đăng nhập từ trước (Firebase Auth nhớ phiên qua các lần tải trang),
+        // chuyển thẳng sang trang quản lý.
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                window.location.href = 'admin_dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html>

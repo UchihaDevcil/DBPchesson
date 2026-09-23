@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ĐBP's Chess Club - Hệ Thống Quản Lý</title>
+    
+    
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tải FontAwesome cho các icon cờ vua -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tải Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .floating-bg {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none; z-index: -1; overflow: hidden;
+        }
+
+        .chess-piece {
+            position: absolute; bottom: -20%;
+            color: rgba(71, 85, 105, 0.08);
+            animation: floatUp linear infinite;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+        }
+
+        .piece-1 { left: 10%; font-size: 8rem; animation-duration: 25s; animation-delay: 0s; }
+        .piece-2 { left: 30%; font-size: 5rem; animation-duration: 20s; animation-delay: 5s; }
+        .piece-3 { left: 70%; font-size: 10rem; animation-duration: 28s; animation-delay: 2s; }
+        .piece-4 { left: 85%; font-size: 6rem; animation-duration: 22s; animation-delay: 8s; }
+        .piece-5 { left: 50%; font-size: 7rem; animation-duration: 30s; animation-delay: 12s; }
+        .piece-6 { left: 20%; font-size: 9rem; animation-duration: 26s; animation-delay: 15s; }
+
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.02);
+            box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.1);
+        }
+
+        .btn-shine {
+            position: relative; overflow: hidden; transition: all 0.3s ease;
+        }
+
+        .btn-shine::after {
+            content: ''; position: absolute; top: -50%; left: -60%; width: 20%; height: 200%;
+            background: rgba(255, 255, 255, 0.3); transform: skewX(-20deg);
+            transition: all 0.5s ease; opacity: 0;
+        }
+
+        .btn-shine:hover::after { left: 120%; opacity: 1; transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1); }
+    </style>
+</head>
+<body class="text-slate-800 antialiased selection:bg-slate-800 selection:text-white">
+
+    <div class="floating-bg">
+        <i class="fa-solid fa-chess-knight chess-piece piece-1"></i>
+        <i class="fa-solid fa-chess-pawn chess-piece piece-2"></i>
+        <i class="fa-solid fa-chess-king chess-piece piece-3"></i>
+        <i class="fa-solid fa-chess-rook chess-piece piece-4"></i>
+        <i class="fa-solid fa-chess-queen chess-piece piece-5"></i>
+        <i class="fa-solid fa-chess-bishop chess-piece piece-6"></i>
+    </div>
+
+    <nav class="bg-slate-900/95 backdrop-blur-md text-white shadow-lg sticky top-0 z-50 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer group fade-in-up">
+                    <i class="fa-solid fa-chess-knight text-2xl group-hover:-translate-y-1 transition-transform duration-300 text-blue-400"></i>
+                    <span class="font-bold text-xl tracking-wide uppercase bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">ĐBP's Chess</span>
+                </div>
+                
+                <div class="hidden md:flex space-x-8 fade-in-up delay-100">
+                    <a href="trangchu.html" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2 hover:bg-slate-800">
+                        <i class="fa-solid fa-house-chimney"></i> Trang chủ
+                    </a>
+                    <a href="AndroidManifest.html" id="navAuthBtn" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-md text-sm font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 flex items-center gap-2">
+                        <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+                    </a>
+                    <a href="admin_dashboard.html" class="bg-gradient-to-r from-rose-700 to-red-600 text-white px-4 py-2 rounded-md text-sm font-bold shadow-lg shadow-rose-900/50 hover:shadow-rose-700/60 hover:scale-105 transition-all duration-300 flex items-center gap-2 border border-rose-500/30">
+                        <i class="fa-solid fa-user-shield"></i> Quản trị viên
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center p-4 relative z-10 w-full">
+        
+        <!-- ================= PHẦN ĐĂNG NHẬP ================= -->
+        <div id="loginSection" class="w-full max-w-md glass-card rounded-2xl overflow-hidden fade-in-up delay-200">
+            <div class="bg-gradient-to-r from-slate-900 to-slate-800 p-8 text-center text-white relative overflow-hidden">
+                <i class="fa-solid fa-chess-king text-[120px] absolute -right-6 -bottom-10 text-white opacity-5 rotate-12"></i>
+                <div class="relative z-10 fade-in-up delay-300">
+                    <h2 class="text-3xl font-extrabold tracking-tight mb-2">Tham Gia Bàn Cờ</h2>
+                    <p class="text-slate-300 text-sm">Điền thông tin của bạn để điểm danh ngay</p>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <form id="loginForm" class="space-y-6">
+                    <div class="fade-in-up delay-300">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5 ml-1">Họ và Tên</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-user"></i></div>
+                            <input type="text" id="fullName" required placeholder="Nguyễn Văn A" class="glass-input pl-11 w-full rounded-xl px-4 py-3 text-slate-900 outline-none">
+                        </div>
+                    </div>
+                    <div class="fade-in-up delay-400">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5 ml-1">Số điện thoại</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-phone"></i></div>
+                            <input type="tel" id="phone" required placeholder="0987654321" pattern="[0-9]{10,11}" class="glass-input pl-11 w-full rounded-xl px-4 py-3 text-slate-900 outline-none">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-5 fade-in-up delay-500">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5 ml-1">Lớp</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-graduation-cap"></i></div>
+                                <input type="text" id="className" required placeholder="10A1" class="glass-input pl-11 w-full rounded-xl px-4 py-3 text-slate-900 outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5 ml-1">Trường</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-school"></i></div>
+                                <input type="text" id="school" required placeholder="THPT ĐBP" class="glass-input pl-11 w-full rounded-xl px-4 py-3 text-slate-900 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-2 fade-in-up delay-500">
+                        <button type="submit" class="btn-shine w-full bg-gradient-to-r from-slate-900 to-slate-800 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2 group">
+                            <span class="tracking-wide" id="btnText">Lưu thông tin & Vào Club</span>
+                            <i class="fa-solid fa-chess-pawn group-hover:translate-x-2 transition-all" id="btnIcon"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+
+        // KIỂM TRA ĐĂNG NHẬP KHI VỪA TẢI TRANG
+        document.addEventListener('DOMContentLoaded', () => {
+            const phone = localStorage.getItem('dbpChessPhone');
+            // Nếu phát hiện đã đăng nhập từ trước, lập tức chuyển sang hello.html
+            if (phone) {
+                window.location.href = 'hello.html';
+            }
+        });
+
+        // XỬ LÝ KHI BẤM NÚT ĐĂNG NHẬP
+        loginForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            // Lấy giá trị
+            const phone = document.getElementById('phone').value.trim();
+            const user = {
+                fullName: document.getElementById('fullName').value.trim(),
+                phone: phone,
+                className: document.getElementById('className').value.trim(),
+                school: document.getElementById('school').value.trim(),
+                isRegisteredForTournament: false
+            };
+
+            // Hiệu ứng Loading nút bấm
+            const originalBtnHTML = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang kết nối...';
+            submitBtn.disabled = true;
+
+            try {
+                // GHI LÊN FIRESTORE — Collection "users", document ID = số điện thoại
+                // Dùng { merge: true } để không ghi đè isRegisteredForTournament
+                // nếu người dùng đã đăng ký giải từ trước đó (chỉnh lại thông tin).
+                const userRef = db.collection('users').doc(phone);
+                const existingDoc = await userRef.get();
+                if (existingDoc.exists) {
+                    // Đã có hồ sơ trước đó -> chỉ cập nhật thông tin, giữ nguyên trạng thái đăng ký giải
+                    await userRef.set(user, { merge: true });
+                } else {
+                    await userRef.set(user);
+                }
+
+                // Lưu SĐT vào localStorage CHỈ để nhớ "phiên đăng nhập" trên trình duyệt này
+                // (dữ liệu thật nằm trên Firestore, đây không phải là cơ sở dữ liệu)
+                localStorage.setItem('dbpChessPhone', phone);
+
+                // Đổi chữ nút thành Thành công
+                submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Thành công! Đang chuyển trang...';
+                submitBtn.classList.replace('from-slate-900', 'from-emerald-600');
+                submitBtn.classList.replace('to-slate-800', 'to-emerald-700');
+
+                // CHUYỂN HƯỚNG SANG hello.html SAU KHI LƯU XONG
+                setTimeout(() => {
+                    window.location.href = 'hello.html';
+                }, 800);
+            } catch (error) {
+                console.error('Lỗi khi lưu lên Firestore:', error);
+                submitBtn.innerHTML = originalBtnHTML;
+                submitBtn.disabled = false;
+                alert('Đã xảy ra lỗi khi lưu thông tin. Vui lòng kiểm tra kết nối mạng và thử lại.\n' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
