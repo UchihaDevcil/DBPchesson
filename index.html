@@ -4,18 +4,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discord Verification</title>
+
     <style>
-        body { font-family: Arial, sans-serif; background: #23272a; color: white; text-align: center; padding-top: 50px; }
-        .box { background: #2c2f33; max-width: 500px; margin: auto; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .code-box { background: #1e2124; padding: 12px; font-size: 18px; word-break: break-all; color: #7289da; border-radius: 6px; margin: 15px 0; user-select: all; }
-        button { background: #7289da; border: none; color: white; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #23272a;
+            color: white;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        .box {
+            background: #2c2f33;
+            max-width: 500px;
+            margin: auto;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .code-box {
+            background: #1e2124;
+            padding: 12px;
+            font-size: 18px;
+            word-break: break-all;
+            color: #7289da;
+            border-radius: 6px;
+            margin: 15px 0;
+            user-select: all;
+        }
+
+        button {
+            background: #7289da;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #5b6eae;
+        }
     </style>
 </head>
+
 <body>
     <div class="box">
         <h2>Discord Verification Successful!</h2>
+
         <p>Copy the code below and paste it into the game:</p>
-        <div id="codeDisplay" class="code-box">Retrieving code...</div>
+
+        <div id="codeDisplay" class="code-box">
+            Retrieving code...
+        </div>
+
         <button onclick="copyCode()">Copy Code</button>
     </div>
 
@@ -23,6 +67,7 @@
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
         const display = document.getElementById('codeDisplay');
+
         if (code) {
             display.innerText = code;
         } else {
@@ -32,7 +77,6 @@
 
         function copyCode() {
             navigator.clipboard.writeText(display.innerText);
-            alert("Code copied successfully!");
         }
     </script>
 </body>
