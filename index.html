@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác thực Discord</title>
+    <title>Discord Verification</title>
     <style>
         body { font-family: Arial, sans-serif; background: #23272a; color: white; text-align: center; padding-top: 50px; }
         .box { background: #2c2f33; max-width: 500px; margin: auto; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -13,10 +13,10 @@
 </head>
 <body>
     <div class="box">
-        <h2>Xác thực Discord Thành Công!</h2>
-        <p>Sao chép đoạn mã dưới đây và dán vào trong game:</p>
-        <div id="codeDisplay" class="code-box">Đang lấy mã...</div>
-        <button onclick="copyCode()">Sao chép mã</button>
+        <h2>Discord Verification Successful!</h2>
+        <p>Copy the code below and paste it into the game:</p>
+        <div id="codeDisplay" class="code-box">Retrieving code...</div>
+        <button onclick="copyCode()">Copy Code</button>
     </div>
 
     <script>
@@ -26,13 +26,13 @@
         if (code) {
             display.innerText = code;
         } else {
-            display.innerText = "Không tìm thấy mã xác thực!";
+            display.innerText = "Verification code not found!";
             display.style.color = "#ff4444";
         }
 
         function copyCode() {
             navigator.clipboard.writeText(display.innerText);
-            alert("Đã sao chép mã thành công!");
+            alert("Code copied successfully!");
         }
     </script>
 </body>
